@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Weather app</title>
+    <link type="text/css" rel="stylesheet" href="css/normalize.css">
+    <link type="text/css" rel="stylesheet" href="css/style.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- blue triangle on top -->
+        <div class="triangle"></div>
+
+        <!-- main form -->
+        <form>
+
+            <!-- postcode input & button -->
+            <p class="small-title"><span>Search for a city</span></p>
+            <div class="input-form bordered">
+                <div class="d-flex">
+                    <label for="zipCode">Enter postcode:</label>
+                    <div>
+                        <input type="text" name="zipCode" id="zipCode" value="" placeholder="eg: 123-4567" maxlength="8">
+                        <!-- error tooltip -->
+                        <span>Please, enter a Japanese postcode</span>
+                    </div>
+                    <button type="button" name="submit">Submit</button>
+                </div>
+            </div>
+
+            <!-- results wrapper -->
+            <div class="cityResults">
+
+                <!-- City name & country -->
+                <h2 id="location">City, Tokyo, Japan</h2>
+
+                <!-- weather forecast block -->
+                <p class="small-title"><span>3-days forecast in <strong class="city">City</strong></span></p>
+                <div class="weather bordered">
+                    <div class="d-flex">
+
+                        <!-- single day forecast -->
+                        <div class="weather-item">
+                            <img src="">
+                            <p id="date">2007-07-07 Sat</p>
+                            <h3 id="condition">Sunny</h3>
+                            <p>
+                                <span id="tempMax">Max: 30</span>
+                                <span id="tempMin">Min: 22</span>
+                            </p>
+                        </div>
+
+                        <!-- single day forecast -->
+                        <div class="weather-item">
+                            <img src="">
+                            <p id="date">2007-07-07 Sat</p>
+                            <h3 id="condition">Sunny</h3>
+                            <p>
+                                <span id="tempMax">Max: 30</span>
+                                <span id="tempMin">Min: 22</span>
+                            </p>
+                        </div>
+
+                        <!-- single day forecast -->
+                        <div class="weather-item">
+                            <img src="">
+                            <p id="date">2007-07-07 Sat</p>
+                            <h3 id="condition">Sunny</h3>
+                            <p>
+                                <span id="tempMax">Max: 30</span>
+                                <span id="tempMin">Min: 22</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- map & free-space blocks -->
+                <div class="d-flex">
+
+                    <!-- map -->
+                    <div class="w-50">
+                        <p class="small-title"><span>Map of <strong class="city">City</strong></span></p>
+                        <div class="map bordered"></div>
+                    </div>
+
+                    <!-- free space: I chose air pollution in the searched city -->
+                    <div class="w-50">
+                        <p class="small-title"><span>Air quality in <strong class="city">City</strong></span></p>
+                        <div class="pollution bordered">
+                            <div id="pollution">
+                                <dl>
+                                    <dt>Air quality:</dt>
+                                    <dd>Good</dd>
+                                </dl>
+                                <dl>
+                                    <dt>CO2:</dt>
+                                    <dd>32.00</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#zipCode").on("keydown", function() {
+                $(this).removeClass("error");
+            })
+            $(".input-form button").on("mousedown", function(e) {
+                e.preventDefault;
+
+                // make sure the postcode is Japanese
+                var val = $("#zipCode").val();
+                if ((val.length != 8) || (val.charAt(3) != '-')) {
+                    $("#zipCode").addClass("error");
+                    return;
+                }
+
+                // start the requests
+                $(".cityResults").removeClass("animate");
+                setTimeout(function() {
+                    loadData();
+                    $(".weather .d-flex").empty();
+                    $("#location").empty();
+                    $(".cityResults").addClass("animate");
+                }, 500)
+            })
+        })
+
+        function loadData() {
+            var zipCode =  $("#zipCode").val();
+
+            // Get location Name (Open Weather Map API) - display city name & country
+
+            var urlCity = 'http://api.openweathermap.org/geo/1.0/zip?zip=' + zipCode + ',JP&appid=750fc7fe52da168e62ab9a0e4dec96a4';
+
+            $.ajax({
+                url: urlCity,
+                method: 'GET',
+                dataType: 'jsonp',
+            }).done(function(result) { // Success
+
+                var city = result.name; // City name
+                var country = result.country; // Country name
+                var lat = result.lat; // Latitude
+                var lon = result.lon; // Longitude
+
+                $("#location").text(city + ', ' + country);
+                $(".city").text(city);
+
+                // openweathermap API - display weather forecast
+
+                var urlWeather = 'https://api.openweathermap.org/data/2.5/onecall?lat=' + lat + '&lon=' + lon + '&exclude=current,minutely,hourly,alerts&units=metric&appid=750fc7fe52da168e62ab9a0e4dec96a4';
+
+                // Get location Weather
+                $.ajax({
+                    url: urlWeather,
+                    method: 'GET',
+                    dataType: 'jsonp',
+                }).done(function(result) {
+
+                    var dayNames = new Array("Sun","Mon","Tue","Wed", "Thur","Fri","Sat");
+
+                    for (var x = 0; x < 3; x++) {
+                        var weather = result.daily[x].weather[0].main;
+                        var tempMin = Math.round(result.daily[x].temp.min);
+                        var tempMax = Math.round(result.daily[x].temp.max);
+                        var icon = result.daily[x].weather[0].icon;
+                        var today = new Date();
+                        today.setDate(today.getDate() + x);
+                        var todayDate = today.toISOString().slice(0, 10);
+                        today = dayNames[today.getDay()]; // today's day name
+
+                        var weatherItem = '<div class="weather-item"><img src="http://openweathermap.org/img/wn/' + icon + '.png"><p>' + todayDate + ' ' +
+                        today + '</p><h3 id="condition">' + weather + '</h3><p><span id="tempMax">Max: ' + tempMax + '&deg; </span><span id="tempMin"> Min: ' + tempMin + '&deg;</span></p></div>'
+
+                        $(".weather .d-flex").append(weatherItem);
+                    }
+
+                    // Mapbox api - display the map of the city
+
+                    var urlMap = 'https://api.mapbox.com/styles/v1/mapbox/streets-v11.html?title=false&zoomwheel=true&access_token=pk.eyJ1Ijoib2xseWxvdmUiLCJhIjoiY2wwM3ZnNWhwMDRzeTNjbnRodHVqMmhhOSJ9.rFqEc7CDuLaN_OAe5ILAEg#15/' + lat + '/' + lon;
+                    $(".map").html("<iframe src='" + urlMap + "'></iframe>");
+
+                }).fail(function(err) {
+                    console.log("error");
+                    throw err;
+                });
+
+                // Air pollution - display air quality info in the "free-space"
+
+                var urlPollution = 'http://api.openweathermap.org/data/2.5/air_pollution?lat=' + lat + '&lon=' + lon +'&appid=750fc7fe52da168e62ab9a0e4dec96a4';
+
+                $.ajax({
+                    url: urlPollution,
+                    method: 'GET',
+                    dataType: 'jsonp',
+                }).done(function(result) {
+
+                    var airQualGrade = new Array("Good", "Fair", "Moderate", "Poor", "Very Poor");
+                    var airQuality = result.list[0].main.aqi;
+                    var results = result.list[0].components;
+                    var airQuaString = '<dl><dt>Air quality:</dt><dd>' + airQualGrade[airQuality] + '</dd></dl>';
+
+                    $('#pollution').empty().append(airQuaString);
+
+                    for (var key in results) {
+                        $('#pollution').append('<dl><dt>' + key + ': </dt><dd>' + results[key] + '</dd></dl>');
+                    }
+
+                }).fail(function(err) {
+                    console.log("error");
+                    throw err;
+                });
+
+            }).fail(function(err) {
+                console.log("error");
+                $("#location").text('Sorry, city not found!');
+                throw err;
+            });
+
+            return false;
+        }
+    </script>
+</body>
+</html>
